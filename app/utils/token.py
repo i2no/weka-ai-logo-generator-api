@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 from config import settings
 from fastapi import HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from datetime import datetime
 
 # 定义HTTPBearer依赖，用于提取请求头中的Authorization
 security = HTTPBearer()
@@ -57,8 +56,15 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
         
         return openid  # 返回用户openid，供接口使用
     
-    except jwt.PyJWTError as e:
-        # 处理Token验证失败的各种情况（签名错误、格式错误等）
+    except jwt.ExpiredSignatureError:
+        # Token过期
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="令牌已过期，请重新登录",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except jwt.InvalidTokenError:
+        # Token无效（包括签名错误、格式错误等）
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="令牌无效或已损坏",
@@ -68,7 +74,7 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
         # 捕获其他未预料的异常
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="身份验证过程出错",
+            detail="身份验证过程出错:" + str(e),
         )
 
 
