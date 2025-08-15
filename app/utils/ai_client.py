@@ -5,12 +5,86 @@ from typing import Dict, List
 import torch  # 假设使用PyTorch训练模型
 import numpy as np
 from PIL import Image
-from app.config import settings  # 加载模型路径等配置
+from config import settings  # 加载模型路径等配置
 from app.utils.storage import upload_image  # 图片上传到云存储的工具
+import requests
+import json
+from fastapi import HTTPException
 
 # 配置日志
 logger = logging.getLogger(__name__)
 
+def call_ai_logo_api(
+    company_name: str,
+    industry: str,
+    styles: list,
+    colors: list,
+    description: str = ""
+) -> dict:
+    """
+    调用外部AI服务生成LOGO图片
+    
+    参数：
+        company_name: 企业名称
+        industry: 行业类型
+        styles: 风格列表（如["极简风", "科技风"]）
+        colors: 颜色列表（如["#1677FF", "#303133"]）
+        description: 额外描述（可选）
+        
+    返回：
+        dict: AI服务返回的结果，包含生成的LOGO图片二进制数据或URL
+              格式示例: {"success": True, "images": [b"图片二进制数据1", b"图片二进制数据2"]}
+        
+    异常：
+        HTTPException: 调用失败时抛出（包含错误信息）
+    """
+    # 1. 准备AI服务请求参数
+    payload = {
+        "company_name": company_name,
+        "industry": industry,
+        "styles": styles,
+        "colors": colors,
+        "description": description,
+        "api_key": settings.AI_SERVICE_API_KEY  # 从配置读取AI服务密钥
+    }
+    
+    # 2. 调用AI服务API
+    try:
+        response = requests.post(
+            url=settings.AI_SERVICE_ENDPOINT,  # AI服务接口地址（从配置读取）
+            headers={"Content-Type": "application/json"},
+            data=json.dumps(payload),
+            timeout=60  # 超时时间（生成LOGO可能需要较长时间）
+        )
+        
+        # 3. 处理响应
+        response_data = response.json()
+        
+        # 4. 检查AI服务返回状态
+        if not response.ok:
+            error_msg = response_data.get("error", f"AI服务调用失败（状态码：{response.status_code}）")
+            raise HTTPException(status_code=500, detail=f"LOGO生成失败：{error_msg}")
+        
+        if not response_data.get("success", False):
+            error_msg = response_data.get("message", "AI服务返回非成功状态")
+            raise HTTPException(status_code=500, detail=f"LOGO生成失败：{error_msg}")
+        
+        # 5. 验证返回的图片数据
+        images = response_data.get("images", [])
+        if not images or not isinstance(images, list):
+            raise HTTPException(status_code=500, detail="AI服务未返回有效的LOGO图片数据")
+        
+        return response_data
+        
+    except requests.exceptions.Timeout:
+        raise HTTPException(status_code=504, detail="AI服务调用超时，请稍后重试")
+    except requests.exceptions.ConnectionError:
+        raise HTTPException(status_code=503, detail="AI服务连接失败，请检查服务是否可用")
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=500, detail="AI服务返回数据格式错误")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"调用AI服务时发生错误：{str(e)}")
+    
 
 class LocalAIClient:
     """本地模型客户端，封装模型加载和LOGO生成逻辑"""

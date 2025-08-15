@@ -1,5 +1,5 @@
 import requests
-from app.config import settings
+from config import settings
 
 
 def get_wechat_openid(code: str) -> str:

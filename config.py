@@ -16,6 +16,11 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
 
     # 数据库配置
+    DB_USER: str = os.getenv("DB_USER", "root")
+    DB_PASSWORD: str = os.getenv("DB_PASSWORD", "password")
+    DB_HOST: str = os.getenv("DB_HOST", "localhost")
+    DB_PORT: int = int(os.getenv("DB_PORT", 3306))
+    DB_NAME: str = os.getenv("DB_NAME", "logo_db")  # 数据
     DATABASE_URL: str = os.getenv("DATABASE_URL", "mysql+pymysql://user:password@localhost:3306/logo_db")
 
     # 补充服务器配置（新增）

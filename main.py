@@ -15,7 +15,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",  # 本地前端开发地址
-        "https://你的小程序域名"   # 线上小程序域名（需在微信公众平台配置）
+        "https://www.weka.cc",   # 线上小程序域名（需在微信公众平台配置）
+        "https://www.ai-site.cc",   # 线上小程序域名（需在微信公众平台配置）
     ],
     allow_credentials=True,
     allow_methods=["*"],  # 允许所有HTTP方法
